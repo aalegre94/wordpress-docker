@@ -1,0 +1,98 @@
+version: '3.1'
+
+services:
+
+  wordpress_bNouU8fD:
+    image: wp:1.5
+    container_name: wp_${SITE}
+    restart: always
+    expose:
+      - "80"
+    environment:
+      WORDPRESS_DB_HOST: db_bNouU8fD
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASS}
+      WORDPRESS_DB_NAME: ${MYSQL_DB}
+      WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX}
+      VIRTUAL_HOST: ${DOMAIN},www.${DOMAIN}
+      LETSENCRYPT_HOST: ${DOMAIN},www.${DOMAIN}
+      LETSENCRYPT_EMAIL: ${EMAIL}
+      #LETSENCRYPT_TEST: true
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    volumes:
+      - wordpress:/var/www/html
+      - ./plugins:/var/www/html/wp-content/plugins/
+    networks:
+      - wp4_mynetwork
+
+  db_bNouU8fD:
+    image: mysql:5.7
+    container_name: bd_${SITE}
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DB}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASS}
+      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    volumes:
+      - db:/var/lib/mysql
+    networks:
+      - wp4_mynetwork
+
+  sftp_bNouU8fD:
+    image: atmoz/sftp
+    container_name: ftp_${SITE}
+    restart: always
+    ports:
+      - ${SFTP_PORT}:22
+    environment:
+      SFTP_USERS: ${SFTP_USER}:${SFTP_PASS}:${PERM}:${PERM}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    volumes:
+      - wordpress:/home/${SFTP_USER}/public_html
+    networks:
+      - wp4_mynetwork
+
+  wordpresscli_bNouU8fD:
+    image: wordpress:cli
+    container_name: wpcli_${SITE}
+    user: ${PERM}:${PERM}
+    command: tail -f /dev/null
+    environment:
+      WORDPRESS_DB_HOST: db_bNouU8fD
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASS}
+      WORDPRESS_DB_NAME: ${MYSQL_DB}
+      WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX}
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    volumes_from:
+      - wordpress_bNouU8fD
+    volumes:
+      - /etc/X11/fs
+    networks:
+      - wp4_mynetwork
+
+volumes:
+  wordpress:
+  db:
+
+networks:
+  wp4_mynetwork:
+     external: true
